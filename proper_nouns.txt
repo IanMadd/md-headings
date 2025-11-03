@@ -1,0 +1,67 @@
+# Example proper nouns file
+# Lines starting with # are comments and will be ignored
+# One proper noun per line
+
+Microsoft
+macOS
+iOS
+GitHub
+JavaScript
+TypeScript
+Python
+WordPress
+iPhone
+iPad
+API
+APIs
+JSON
+XML
+HTML
+CSS
+SQL
+PostgreSQL
+MySQL
+MongoDB
+Redis
+AWS
+Azure
+Google
+Facebook
+LinkedIn
+YouTube
+Netflix
+Ubuntu
+Docker
+Kubernetes
+React
+Vue.js
+React Native
+Node.js
+jQuery
+Bootstrap
+VS Code
+IntelliJ
+Xcode
+Photoshop
+Illustrator
+WordPress
+Shopify
+Salesforce
+HubSpot
+Slack
+Zoom
+Teams
+Office 365
+OneDrive
+SharePoint
+Excel
+PowerPoint
+Outlook
+OneNote
+OAuth
+JWT
+WebSockets
+LocalStorage
+IndexedDB
+React Native
+Express
