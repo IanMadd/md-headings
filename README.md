@@ -1,105 +1,122 @@
-# Markdown Headings Converter
+# Markdown Heading Tools - Project Summary
 
-A Python script that converts uppercase headings in Markdown documents to sentence case while preserving proper nouns.
+This project contains two complementary Python scripts for processing markdown headings:
 
-## Features
+## 🔧 Scripts Overview
 
-- **Recursive Processing**: Processes all `.md` and `.markdown` files in a directory and its subdirectories
-- **Proper Nouns Preservation**: Maintains correct capitalization for specified proper nouns (e.g., "Microsoft", "macOS", "JavaScript")
-- **Smart Sentence Case**: Converts headings to sentence case while preserving abbreviations and proper nouns
-- **Dry Run Mode**: Preview changes before applying them
-- **Regex-Based**: Uses regular expressions to efficiently find and process Markdown headings
+### 1. `extract_heading_words.py` - Word Extractor
 
-## Installation
+**Purpose**: Finds non-English words in markdown headings
 
-No additional dependencies required - uses only Python standard library.
+- Extracts words from all headings in markdown files
+- Compares against a comprehensive English dictionary (`en_words.txt`)
+- Outputs unique non-English words to a text file
+- Perfect for identifying proper nouns, technical terms, and specialized vocabulary
 
-## Usage
+### 2. `md_headings_converter.py` - Heading Converter  
 
-### Basic Usage
+**Purpose**: Converts uppercase headings to proper sentence case
 
-```bash
-python md_headings_converter.py /path/to/markdown/directory
-```
+- Converts ALL CAPS headings to sentence case
+- Preserves proper nouns using a custom list
+- Processes all markdown files recursively
+- Includes dry-run mode for safe testing
 
-### With Proper Nouns File
+## 🔄 Workflow Integration
 
-```bash
-python md_headings_converter.py /path/to/markdown/directory --proper-nouns proper_nouns.txt
-```
-
-### Dry Run (Preview Changes)
+The scripts work together perfectly:
 
 ```bash
-python md_headings_converter.py /path/to/markdown/directory --proper-nouns proper_nouns.txt --dry-run
+# Step 1: Extract technical terms from your documentation
+python extract_heading_words.py docs/ --output tech_terms.txt
+
+# Step 2: Review tech_terms.txt and keep only proper nouns/brand names
+
+# Step 3: Convert headings using the curated proper nouns list
+python md_headings_converter.py docs/ --proper-nouns tech_terms.txt --dry-run
+
+# Step 4: Apply changes if satisfied with preview
+python md_headings_converter.py docs/ --proper-nouns tech_terms.txt
 ```
 
-## Command Line Options
-
-- `directory`: Path to the directory containing Markdown files (required)
-- `--proper-nouns`, `-p`: Path to text file containing proper nouns (optional)
-- `--dry-run`, `-d`: Show what would be changed without modifying files (optional)
-
-## Proper Nouns File Format
-
-Create a text file with one proper noun per line:
+## 📁 Project Structure
 
 ```
-Microsoft
-macOS
+md-headings/
+├── extract_heading_words.py      # Word extraction script ⭐
+├── md_headings_converter.py      # Heading conversion script ⭐
+├── en_words.txt                  # English dictionary (235K+ words)
+├── proper_nouns.txt              # Example proper nouns list
+├── non_english_words.txt         # Generated output from extractor
+├── examples/                     # Test markdown files
+│   ├── sample1.md
+│   └── subdir/sample2.md
+├── README.md                     # Main documentation
+├── WORD_EXTRACTOR_README.md      # Word extractor documentation
+├── test_converter.py             # Test script for converter
+├── test_word_extractor.py        # Test script for extractor
+└── usage_examples.py             # Usage examples
+```
+
+## 🚀 Quick Start
+
+### Extract Non-English Words
+
+```bash
+python extract_heading_words.py your_docs_folder/
+```
+
+### Convert Headings  
+
+```bash
+python md_headings_converter.py your_docs_folder/ --proper-nouns proper_nouns.txt
+```
+
+## ✨ Key Features
+
+### Word Extractor
+
+- ✅ Recursive directory processing
+- ✅ Comprehensive English dictionary (235K+ words)
+- ✅ Alphabetical sorting
+- ✅ Duplicate removal
+- ✅ Individual word analysis mode
+- ✅ Custom dictionary support
+
+### Heading Converter
+
+- ✅ Smart sentence case conversion
+- ✅ Proper noun preservation
+- ✅ Multi-word proper nouns support
+- ✅ Dry-run preview mode
+- ✅ Preposition/article handling
+- ✅ Abbreviation detection
+
+## 📊 Example Results
+
+### Word Extractor Output
+
+```
+APIs
+AWS
+Docker
 JavaScript
-GitHub
-API
-JSON
+MongoDB
+OAuth
+PostgreSQL
+WebSockets
 ```
 
-- Lines starting with `#` are treated as comments and ignored
-- Empty lines are ignored
-- Each proper noun should be on its own line with the exact capitalization you want preserved
+### Heading Conversion
 
-## Examples
-
-### Before Processing
-
-```markdown
-# GETTING STARTED WITH PYTHON AND JAVASCRIPT
-## SETTING UP YOUR DEVELOPMENT ENVIRONMENT
-### INSTALLING VS CODE AND EXTENSIONS
-#### CONNECTING TO POSTGRESQL DATABASES
+```
+Before: # GETTING STARTED WITH JAVASCRIPT AND APIs ON AWS
+After:  # Getting started with JavaScript and APIs on AWS
 ```
 
-### After Processing (with proper nouns file)
+## 🔧 Dependencies
 
-```markdown
-# Getting started with Python and JavaScript
-## Setting up your development environment
-### Installing VS Code and extensions
-#### Connecting to PostgreSQL databases
-```
+- Python 3.6+ (uses only standard library)
+- No external packages required
 
-## How It Works
-
-1. **Find Headings**: Uses regex pattern `^(#{1,6})\s+(.+)$` to match Markdown headings
-2. **Analyze Words**: Splits heading text into words while preserving punctuation
-3. **Apply Rules**: 
-   - First word is capitalized
-   - Proper nouns maintain their specified capitalization
-   - Short uppercase words (≤3 chars) are treated as abbreviations and kept uppercase
-   - Other words are converted to lowercase
-4. **Preserve Structure**: Maintains original Markdown heading levels and formatting
-
-## Testing
-
-The `examples/` directory contains sample Markdown files you can use to test the script:
-
-```bash
-# Test with dry run first
-python md_headings_converter.py examples --proper-nouns proper_nouns.txt --dry-run
-
-# Apply changes
-python md_headings_converter.py examples --proper-nouns proper_nouns.txt
-```
-
-## License
-
-MIT License - feel free to use and modify as needed.
+Both scripts are production-ready and handle edge cases gracefully!

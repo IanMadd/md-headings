@@ -17,6 +17,7 @@ python extract_heading_words.py /path/to/markdown/directory
 ```
 
 This will:
+
 1. Process all `.md` and `.markdown` files in the directory and subdirectories
 2. Extract words from headings that aren't in `en_words.txt`
 3. Save unique words to `non_english_words.txt`
@@ -44,6 +45,7 @@ python extract_heading_words.py /path/to/markdown --analyze JavaScript PostgreSQ
 ## Example Output
 
 Given these headings:
+
 ```markdown
 # Getting Started with JavaScript and APIs
 ## Setting up PostgreSQL Databases
@@ -51,6 +53,7 @@ Given these headings:
 ```
 
 The script would identify these non-English words:
+
 ```
 APIs
 JavaScript
