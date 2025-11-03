@@ -71,24 +71,33 @@ class MarkdownHeadingsConverter:
             'through', 'during', 'before', 'after', 'since', 'until', 'within'
         }
         
-        words = text.split()
+        # First, handle multi-word proper nouns
+        result_text = text
+        for noun in sorted(self.proper_nouns, key=len, reverse=True):
+            if ' ' in noun or '.' in noun:  # Multi-word or dotted proper nouns
+                # Create a case-insensitive pattern
+                pattern = re.compile(re.escape(noun), re.IGNORECASE)
+                result_text = pattern.sub(noun, result_text)
+        
+        # Now process individual words
+        words = result_text.split()
         result = []
         
         for i, word in enumerate(words):
             # Extract the core word without punctuation for comparison
-            word_clean = re.sub(r'[^\w]', '', word)
+            word_clean = re.sub(r'[^\w.]', '', word)  # Keep dots for things like js, css
             
-            # Check if this word is a proper noun
+            # Check if this word is a single-word proper noun
             matching_noun = None
             for noun in self.proper_nouns:
-                if word_clean.lower() == noun.lower():
+                if ' ' not in noun and word_clean.lower() == noun.lower():
                     matching_noun = noun
                     break
             
             if matching_noun:
                 # Use the proper noun's exact capitalization
-                leading_punct = re.match(r'^[^\w]*', word).group()
-                trailing_punct = re.search(r'[^\w]*$', word).group()
+                leading_punct = re.match(r'^[^\w.]*', word).group()
+                trailing_punct = re.search(r'[^\w.]*$', word).group()
                 result.append(leading_punct + matching_noun + trailing_punct)
             elif i == 0:
                 # First word - always capitalize
@@ -96,8 +105,8 @@ class MarkdownHeadingsConverter:
             elif word_clean.lower() in lowercase_words:
                 # Common words that should be lowercase (unless first word)
                 result.append(word.lower())
-            elif word_clean.isupper() and len(word_clean) <= 3:
-                # Keep short uppercase words (likely abbreviations)
+            elif word_clean.isupper() and len(word_clean) <= 3 and not word_clean.lower() in ['the', 'and', 'for', 'are', 'but', 'not', 'you', 'all', 'can', 'had', 'her', 'was', 'one', 'our', 'out', 'day', 'get', 'use', 'man', 'new', 'now', 'old', 'see', 'him', 'two', 'how', 'its', 'who', 'oil', 'sit', 'set', 'run', 'eat', 'far', 'sea', 'eye', 'car', 'cut', 'dog', 'end', 'few', 'fox', 'got', 'hat', 'hot', 'job', 'let', 'lot', 'men', 'mix', 'put', 'red', 'say', 'sun', 'ten', 'top', 'try', 'war', 'way', 'win', 'yes']:
+                # Keep short uppercase words that are likely abbreviations (not common English words)
                 result.append(word)
             else:
                 # Default to lowercase for other words
