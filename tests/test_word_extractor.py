@@ -5,7 +5,13 @@ Test script for the word extractor
 
 import tempfile
 import os
-from extract_heading_words import MarkdownHeadingWordExtractor
+import sys
+from pathlib import Path
+
+# Add parent directory to path to import the module
+sys.path.insert(0, str(Path(__file__).parent.parent))
+
+from md_headings.extractor import MarkdownHeadingWordExtractor
 
 def test_word_extraction():
     """Test the word extractor with sample data"""

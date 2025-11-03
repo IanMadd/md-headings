@@ -1,19 +1,21 @@
-#!/usr/bin/env python3
 """
-Markdown Headings Converter
+Markdown Headings Converter Module
 
-This script finds headings in markdown documents and converts uppercase text
-to sentence case while preserving proper nouns from a specified file.
+This module provides the MarkdownHeadingsConverter class for converting uppercase
+markdown headings to sentence case while preserving proper nouns.
 """
 
-import os
 import re
-import argparse
 from pathlib import Path
-from typing import Set, List, Optional
+from typing import Set, Optional
 
 
 class MarkdownHeadingsConverter:
+    """
+    A class for converting markdown headings from uppercase to sentence case
+    while preserving proper nouns from a specified list.
+    """
+    
     def __init__(self, proper_nouns_file: Optional[str] = None):
         """
         Initialize the converter with optional proper nouns file.
@@ -34,6 +36,10 @@ class MarkdownHeadingsConverter:
         
         Args:
             filepath: Path to the proper nouns file
+            
+        Raises:
+            FileNotFoundError: If the proper nouns file doesn't exist
+            Exception: For other file reading errors
         """
         try:
             with open(filepath, 'r', encoding='utf-8') as f:
@@ -65,25 +71,17 @@ class MarkdownHeadingsConverter:
             'through', 'during', 'before', 'after', 'since', 'until', 'within'
         }
         
-        # First check for multi-word proper nouns
-        result_text = text
-        for noun in sorted(self.proper_nouns, key=len, reverse=True):
-            if ' ' in noun:  # Multi-word proper noun
-                pattern = re.compile(re.escape(noun), re.IGNORECASE)
-                result_text = pattern.sub(noun, result_text)
-        
-        # Now process individual words
-        words = result_text.split()
+        words = text.split()
         result = []
         
         for i, word in enumerate(words):
             # Extract the core word without punctuation for comparison
             word_clean = re.sub(r'[^\w]', '', word)
             
-            # Check if this word is a single-word proper noun
+            # Check if this word is a proper noun
             matching_noun = None
             for noun in self.proper_nouns:
-                if ' ' not in noun and word_clean.lower() == noun.lower():
+                if word_clean.lower() == noun.lower():
                     matching_noun = noun
                     break
             
@@ -134,6 +132,9 @@ class MarkdownHeadingsConverter:
             
         Returns:
             True if file was modified, False otherwise
+            
+        Raises:
+            Exception: For file reading/writing errors
         """
         try:
             with open(filepath, 'r', encoding='utf-8') as f:
@@ -206,36 +207,3 @@ class MarkdownHeadingsConverter:
         
         if not dry_run:
             print(f"\nProcessing complete. Modified {modified_count} files.")
-
-
-def main():
-    parser = argparse.ArgumentParser(
-        description="Convert uppercase headings in markdown files to sentence case"
-    )
-    parser.add_argument(
-        'directory',
-        help='Directory to process (will process recursively)'
-    )
-    parser.add_argument(
-        '--proper-nouns',
-        '-p',
-        help='Path to text file containing proper nouns (one per line)'
-    )
-    parser.add_argument(
-        '--dry-run',
-        '-d',
-        action='store_true',
-        help='Show what would be changed without modifying files'
-    )
-    
-    args = parser.parse_args()
-    
-    # Create converter instance
-    converter = MarkdownHeadingsConverter(args.proper_nouns)
-    
-    # Process directory
-    converter.process_directory(args.directory, args.dry_run)
-
-
-if __name__ == "__main__":
-    main()

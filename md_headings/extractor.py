@@ -1,26 +1,31 @@
-#!/usr/bin/env python3
 """
-Markdown Headings Word Extractor
+Markdown Heading Word Extractor Module
 
-This script finds all words used in markdown headings that are not found in a 
-standard English dictionary file (en_words.txt). Useful for identifying proper 
-nouns, technical terms, and other specialized vocabulary in documentation.
+This module provides the MarkdownHeadingWordExtractor class for extracting
+non-English words from markdown headings.
 """
 
-import os
 import re
-import argparse
 from pathlib import Path
 from typing import Set, List
 
 
 class MarkdownHeadingWordExtractor:
+    """
+    A class for extracting words from markdown headings that are not found
+    in a standard English dictionary.
+    """
+    
     def __init__(self, english_words_file: str = "en_words.txt"):
         """
         Initialize the word extractor.
         
         Args:
             english_words_file: Path to the English words dictionary file
+            
+        Raises:
+            FileNotFoundError: If the English words file doesn't exist
+            Exception: For other file reading errors
         """
         self.english_words = set()
         self.heading_pattern = re.compile(r'^(#{1,6})\s+(.+)$', re.MULTILINE)
@@ -34,6 +39,10 @@ class MarkdownHeadingWordExtractor:
         
         Args:
             filepath: Path to the English words file
+            
+        Raises:
+            FileNotFoundError: If the file doesn't exist
+            Exception: For other file reading errors
         """
         try:
             with open(filepath, 'r', encoding='utf-8') as f:
@@ -80,15 +89,19 @@ class MarkdownHeadingWordExtractor:
         """
         return word.lower() in self.english_words
     
-    def process_markdown_file(self, filepath: Path) -> Set[str]:
+    def process_markdown_file(self, filepath: Path, verbose: bool = True) -> Set[str]:
         """
         Process a single markdown file and extract non-English words from headings.
         
         Args:
             filepath: Path to the markdown file
+            verbose: Whether to print found words
             
         Returns:
             Set of non-English words found in headings
+            
+        Raises:
+            Exception: For file reading errors
         """
         non_english_words = set()
         
@@ -107,48 +120,55 @@ class MarkdownHeadingWordExtractor:
                 for word in words:
                     if not self.is_english_word(word):
                         non_english_words.add(word)
-                        print(f"  Found non-English word: '{word}' in heading: {level} {heading_text}")
+                        if verbose:
+                            print(f"  Found non-English word: '{word}' in heading: {level} {heading_text}")
             
         except Exception as e:
             print(f"Error processing {filepath}: {e}")
         
         return non_english_words
     
-    def process_directory(self, directory: str, output_file: str = "non_english_words.txt") -> None:
+    def process_directory(self, directory: str, output_file: str = "non_english_words.txt", verbose: bool = True) -> Set[str]:
         """
         Process all markdown files in a directory recursively.
         
         Args:
             directory: Path to the directory to process
             output_file: Path to the output file for non-English words
+            verbose: Whether to print detailed progress
+            
+        Returns:
+            Set of all non-English words found
         """
         directory_path = Path(directory)
         
         if not directory_path.exists():
             print(f"Error: Directory '{directory}' does not exist.")
-            return
+            return set()
         
         # Find all markdown files
         markdown_files = list(directory_path.rglob('*.md')) + list(directory_path.rglob('*.markdown'))
         
         if not markdown_files:
             print(f"No markdown files found in '{directory}'")
-            return
+            return set()
         
-        print(f"Found {len(markdown_files)} markdown files")
-        print("=" * 60)
+        if verbose:
+            print(f"Found {len(markdown_files)} markdown files")
+            print("=" * 60)
         
         all_non_english_words = set()
         
         for filepath in markdown_files:
-            print(f"Processing: {filepath}")
-            words = self.process_markdown_file(filepath)
+            if verbose:
+                print(f"Processing: {filepath}")
+            words = self.process_markdown_file(filepath, verbose)
             all_non_english_words.update(words)
             
-            if not words:
-                print("  No non-English words found in headings")
-            
-            print("-" * 40)
+            if verbose:
+                if not words:
+                    print("  No non-English words found in headings")
+                print("-" * 40)
         
         # Save results to file
         if all_non_english_words:
@@ -160,19 +180,23 @@ class MarkdownHeadingWordExtractor:
                     for word in sorted_words:
                         f.write(f"{word}\n")
                 
-                print(f"\nResults saved to '{output_file}'")
-                print(f"Total unique non-English words found: {len(sorted_words)}")
-                print("\nFirst 20 words:")
-                for word in sorted_words[:20]:
-                    print(f"  {word}")
-                
-                if len(sorted_words) > 20:
-                    print(f"  ... and {len(sorted_words) - 20} more")
+                if verbose:
+                    print(f"\nResults saved to '{output_file}'")
+                    print(f"Total unique non-English words found: {len(sorted_words)}")
+                    print("\nFirst 20 words:")
+                    for word in sorted_words[:20]:
+                        print(f"  {word}")
+                    
+                    if len(sorted_words) > 20:
+                        print(f"  ... and {len(sorted_words) - 20} more")
             
             except Exception as e:
                 print(f"Error saving results to {output_file}: {e}")
         else:
-            print("\nNo non-English words found in any headings.")
+            if verbose:
+                print("\nNo non-English words found in any headings.")
+        
+        return all_non_english_words
     
     def analyze_specific_words(self, words: List[str]) -> None:
         """
@@ -188,54 +212,3 @@ class MarkdownHeadingWordExtractor:
             is_english = self.is_english_word(word)
             status = "English" if is_english else "Non-English"
             print(f"'{word}' -> {status}")
-
-
-def main():
-    parser = argparse.ArgumentParser(
-        description="Extract non-English words from markdown headings"
-    )
-    parser.add_argument(
-        'directory',
-        help='Directory to process (will process recursively)'
-    )
-    parser.add_argument(
-        '--english-words',
-        '-e',
-        default='en_words.txt',
-        help='Path to English words dictionary file (default: en_words.txt)'
-    )
-    parser.add_argument(
-        '--output',
-        '-o',
-        default='non_english_words.txt',
-        help='Output file for non-English words (default: non_english_words.txt)'
-    )
-    parser.add_argument(
-        '--analyze',
-        '-a',
-        nargs='+',
-        help='Analyze specific words (space-separated)'
-    )
-    
-    args = parser.parse_args()
-    
-    try:
-        # Create extractor instance
-        extractor = MarkdownHeadingWordExtractor(args.english_words)
-        
-        if args.analyze:
-            # Analyze specific words
-            extractor.analyze_specific_words(args.analyze)
-        else:
-            # Process directory
-            extractor.process_directory(args.directory, args.output)
-    
-    except Exception as e:
-        print(f"Error: {e}")
-        return 1
-    
-    return 0
-
-
-if __name__ == "__main__":
-    exit(main())

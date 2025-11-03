@@ -5,7 +5,13 @@ Test script for the Markdown Headings Converter
 
 import os
 import tempfile
-from md_headings_converter import MarkdownHeadingsConverter
+import sys
+from pathlib import Path
+
+# Add parent directory to path to import the module
+sys.path.insert(0, str(Path(__file__).parent.parent))
+
+from md_headings.converter import MarkdownHeadingsConverter
 
 def test_converter():
     """Test the converter with sample data"""
