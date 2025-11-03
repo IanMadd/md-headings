@@ -31,6 +31,10 @@ class MarkdownHeadingWordExtractor:
         self.heading_pattern = re.compile(r'^(#{1,6})\s+(.+)$', re.MULTILINE)
         self.word_pattern = re.compile(r'\b[a-zA-Z]+\b')  # Match alphabetic words only
         
+        # Patterns for detecting code blocks
+        self.fenced_code_pattern = re.compile(r'^```[\s\S]*?^```', re.MULTILINE)
+        self.indented_code_pattern = re.compile(r'^(    |\t).*$', re.MULTILINE)
+        
         self.load_english_words(english_words_file)
     
     def load_english_words(self, filepath: str) -> None:
@@ -60,6 +64,38 @@ class MarkdownHeadingWordExtractor:
         except Exception as e:
             print(f"Error loading English words file: {e}")
             raise
+    
+    def remove_code_blocks(self, content: str) -> str:
+        """
+        Remove code blocks from markdown content to avoid processing comments within them.
+        
+        Args:
+            content: Markdown content
+            
+        Returns:
+            Content with code blocks removed
+        """
+        # Remove fenced code blocks (```...```)
+        content_without_fenced = self.fenced_code_pattern.sub('', content)
+        
+        # Split into lines to handle indented code blocks
+        lines = content_without_fenced.split('\n')
+        filtered_lines = []
+        in_code_block = False
+        
+        for line in lines:
+            # Check if this line is indented code (4 spaces or 1 tab at start)
+            if re.match(r'^(    |\t)', line):
+                in_code_block = True
+                continue  # Skip this line
+            else:
+                # If we were in a code block and now we're not, we've exited
+                if in_code_block and line.strip() == '':
+                    continue  # Skip empty lines after code blocks
+                in_code_block = False
+                filtered_lines.append(line)
+        
+        return '\n'.join(filtered_lines)
     
     def extract_words_from_heading(self, heading_text: str) -> Set[str]:
         """
@@ -109,8 +145,11 @@ class MarkdownHeadingWordExtractor:
             with open(filepath, 'r', encoding='utf-8') as f:
                 content = f.read()
             
-            # Find all headings
-            headings = self.heading_pattern.findall(content)
+            # Remove code blocks to avoid processing comments within them
+            content_without_code = self.remove_code_blocks(content)
+            
+            # Find all headings in the cleaned content
+            headings = self.heading_pattern.findall(content_without_code)
             
             for level, heading_text in headings:
                 # Extract words from this heading

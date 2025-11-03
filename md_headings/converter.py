@@ -29,6 +29,10 @@ class MarkdownHeadingsConverter:
         
         # Regex pattern to match markdown headings (# to ######)
         self.heading_pattern = re.compile(r'^(#{1,6})\s+(.+)$', re.MULTILINE)
+        
+        # Patterns for detecting code blocks
+        self.fenced_code_pattern = re.compile(r'^```[\s\S]*?^```', re.MULTILINE)
+        self.indented_code_pattern = re.compile(r'^(    |\t).*$', re.MULTILINE)
     
     def load_proper_nouns(self, filepath: str) -> None:
         """
@@ -52,6 +56,38 @@ class MarkdownHeadingsConverter:
             print(f"Warning: Proper nouns file '{filepath}' not found. Proceeding without proper nouns.")
         except Exception as e:
             print(f"Error loading proper nouns file: {e}")
+    
+    def remove_code_blocks(self, content: str) -> str:
+        """
+        Remove code blocks from markdown content to avoid processing comments within them.
+        
+        Args:
+            content: Markdown content
+            
+        Returns:
+            Content with code blocks removed
+        """
+        # Remove fenced code blocks (```...```)
+        content_without_fenced = self.fenced_code_pattern.sub('', content)
+        
+        # Split into lines to handle indented code blocks
+        lines = content_without_fenced.split('\n')
+        filtered_lines = []
+        in_code_block = False
+        
+        for line in lines:
+            # Check if this line is indented code (4 spaces or 1 tab at start)
+            if re.match(r'^(    |\t)', line):
+                in_code_block = True
+                continue  # Skip this line
+            else:
+                # If we were in a code block and now we're not, we've exited
+                if in_code_block and line.strip() == '':
+                    continue  # Skip empty lines after code blocks
+                in_code_block = False
+                filtered_lines.append(line)
+        
+        return '\n'.join(filtered_lines)
     
     def convert_to_sentence_case(self, text: str) -> str:
         """
@@ -149,9 +185,9 @@ class MarkdownHeadingsConverter:
             with open(filepath, 'r', encoding='utf-8') as f:
                 content = f.read()
             
-            # Find and process all headings
+            # Process content while avoiding code blocks
             original_content = content
-            modified_content = self.heading_pattern.sub(self.process_heading, content)
+            modified_content = self.process_content_avoiding_code_blocks(content)
             
             # Only write if content changed
             if modified_content != original_content:
@@ -164,6 +200,94 @@ class MarkdownHeadingsConverter:
         except Exception as e:
             print(f"Error processing {filepath}: {e}")
             return False
+    
+    def process_content_avoiding_code_blocks(self, content: str) -> str:
+        """
+        Process markdown content to convert headings while avoiding code blocks.
+        
+        Args:
+            content: Original markdown content
+            
+        Returns:
+            Modified content with converted headings
+        """
+        # Split content into chunks, identifying code blocks
+        chunks = []
+        current_pos = 0
+        
+        # Find all fenced code blocks first
+        for match in self.fenced_code_pattern.finditer(content):
+            # Add content before the code block
+            before_code = content[current_pos:match.start()]
+            if before_code:
+                chunks.append(('text', before_code))
+            
+            # Add the code block as-is
+            chunks.append(('code', match.group()))
+            current_pos = match.end()
+        
+        # Add remaining content after last code block
+        if current_pos < len(content):
+            remaining = content[current_pos:]
+            chunks.append(('text', remaining))
+        
+        # Process each chunk
+        result_chunks = []
+        for chunk_type, chunk_content in chunks:
+            if chunk_type == 'code':
+                # Don't modify code blocks
+                result_chunks.append(chunk_content)
+            else:
+                # Process headings in text chunks, but avoid indented code blocks
+                processed = self.process_text_chunk_avoiding_indented_code(chunk_content)
+                result_chunks.append(processed)
+        
+        return ''.join(result_chunks)
+    
+    def process_text_chunk_avoiding_indented_code(self, text: str) -> str:
+        """
+        Process a text chunk while avoiding indented code blocks.
+        
+        Args:
+            text: Text chunk to process
+            
+        Returns:
+            Processed text with converted headings
+        """
+        lines = text.split('\n')
+        result_lines = []
+        
+        i = 0
+        while i < len(lines):
+            line = lines[i]
+            
+            # Check if this line is indented code (4 spaces or 1 tab at start)
+            if re.match(r'^(    |\t)', line):
+                # This is indented code, copy it as-is and skip until we exit the code block
+                result_lines.append(line)
+                i += 1
+                
+                # Continue copying indented lines and empty lines
+                while i < len(lines):
+                    next_line = lines[i]
+                    if re.match(r'^(    |\t)', next_line) or next_line.strip() == '':
+                        result_lines.append(next_line)
+                        i += 1
+                    else:
+                        break
+            else:
+                # Check if this is a heading
+                heading_match = self.heading_pattern.match(line)
+                if heading_match:
+                    # Process the heading
+                    converted_heading = self.process_heading(heading_match)
+                    result_lines.append(converted_heading)
+                else:
+                    # Regular line, keep as-is
+                    result_lines.append(line)
+                i += 1
+        
+        return '\n'.join(result_lines)
     
     def process_directory(self, directory: str, dry_run: bool = False) -> None:
         """
@@ -197,7 +321,9 @@ class MarkdownHeadingsConverter:
                     with open(filepath, 'r', encoding='utf-8') as f:
                         content = f.read()
                     
-                    headings = self.heading_pattern.findall(content)
+                    # Remove code blocks before finding headings for dry run
+                    content_without_code = self.remove_code_blocks(content)
+                    headings = self.heading_pattern.findall(content_without_code)
                     if headings:
                         print(f"\n{filepath}:")
                         for level, text in headings:
