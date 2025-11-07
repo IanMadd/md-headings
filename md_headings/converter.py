@@ -33,6 +33,13 @@ class MarkdownHeadingsConverter:
         # Patterns for detecting code blocks
         self.fenced_code_pattern = re.compile(r'^```[\s\S]*?^```', re.MULTILINE)
         self.indented_code_pattern = re.compile(r'^(    |\t).*$', re.MULTILINE)
+        
+        # Patterns for detecting TOML frontmatter
+        self.toml_frontmatter_pattern = re.compile(r'^(\+\+\+\n)(.*?)(\n\+\+\+)', re.DOTALL)
+        # Pattern to match title fields in TOML (title, linkTitle, description)
+        self.toml_title_pattern = re.compile(r'^(\s*)(title|linkTitle|description)(\s*=\s*)"([^"]*)"', re.MULTILINE)
+        # Additional pattern for nested menu titles (handles [menu.xxx] sections with title fields)
+        self.toml_menu_title_pattern = re.compile(r'(\[menu\.[^\]]+\].*?)(\s+title\s*=\s*)"([^"]*)"', re.DOTALL | re.MULTILINE)
     
     def load_proper_nouns(self, filepath: str) -> None:
         """
@@ -107,13 +114,32 @@ class MarkdownHeadingsConverter:
             'through', 'during', 'before', 'after', 'since', 'until', 'within'
         }
         
-        # First, handle multi-word proper nouns
-        result_text = text
+        # First, identify and protect multi-word proper nouns
+        # Create a list of (start, end, replacement) tuples
+        replacements = []
+        
         for noun in sorted(self.proper_nouns, key=len, reverse=True):
             if ' ' in noun or '.' in noun:  # Multi-word or dotted proper nouns
-                # Create a case-insensitive pattern
+                # Find all occurrences (case-insensitive)
                 pattern = re.compile(re.escape(noun), re.IGNORECASE)
-                result_text = pattern.sub(noun, result_text)
+                for match in pattern.finditer(text):
+                    start, end = match.span()
+                    # Check if this range overlaps with any existing replacement
+                    overlaps = False
+                    for pstart, pend, _ in replacements:
+                        if not (end <= pstart or start >= pend):
+                            overlaps = True
+                            break
+                    if not overlaps:
+                        replacements.append((start, end, noun))
+        
+        # Sort replacements by start position (reverse order for building result)
+        replacements.sort(reverse=True)
+        
+        # Apply replacements from end to start to maintain positions
+        result_text = text
+        for start, end, noun in replacements:
+            result_text = result_text[:start] + noun + result_text[end:]
         
         # Now process individual words
         words = result_text.split()
@@ -123,10 +149,14 @@ class MarkdownHeadingsConverter:
             # Extract the core word without punctuation for comparison
             word_clean = re.sub(r'[^\w.]', '', word)  # Keep dots for things like js, css
             
+            # Check if this word is part of a multi-word proper noun that was already handled
+            # If the word is already in the correct case from multi-word replacement, preserve it
+            word_lower = word_clean.lower()
+            
             # Check if this word is a single-word proper noun
             matching_noun = None
             for noun in self.proper_nouns:
-                if ' ' not in noun and word_clean.lower() == noun.lower():
+                if ' ' not in noun and '.' not in noun and word_lower == noun.lower():
                     matching_noun = noun
                     break
             
@@ -136,17 +166,34 @@ class MarkdownHeadingsConverter:
                 trailing_punct = re.search(r'[^\w.]*$', word).group()
                 result.append(leading_punct + matching_noun + trailing_punct)
             elif i == 0:
-                # First word - always capitalize
-                result.append(word.capitalize())
-            elif word_clean.lower() in lowercase_words:
-                # Common words that should be lowercase (unless first word)
+                # First word - always capitalize (unless it's already correct from multi-word noun)
+                if word_clean == word_clean.capitalize() or (len(words) > 1 and any(
+                    noun.startswith(word_clean) and ' ' in noun 
+                    for noun in self.proper_nouns
+                )):
+                    result.append(word)
+                else:
+                    result.append(word.capitalize())
+            elif word_lower in lowercase_words:
+                # Common words that should be lowercase
                 result.append(word.lower())
-            elif word_clean.isupper() and len(word_clean) <= 3 and not word_clean.lower() in ['the', 'and', 'for', 'are', 'but', 'not', 'you', 'all', 'can', 'had', 'her', 'was', 'one', 'our', 'out', 'day', 'get', 'use', 'man', 'new', 'now', 'old', 'see', 'him', 'two', 'how', 'its', 'who', 'oil', 'sit', 'set', 'run', 'eat', 'far', 'sea', 'eye', 'car', 'cut', 'dog', 'end', 'few', 'fox', 'got', 'hat', 'hot', 'job', 'let', 'lot', 'men', 'mix', 'put', 'red', 'say', 'sun', 'ten', 'top', 'try', 'war', 'way', 'win', 'yes']:
-                # Keep short uppercase words that are likely abbreviations (not common English words)
+            elif word_clean.isupper() and len(word_clean) <= 3 and word_lower not in ['the', 'and', 'for', 'are', 'but', 'not', 'you', 'all', 'can', 'had', 'her', 'was', 'one', 'our', 'out', 'day', 'get', 'use', 'man', 'new', 'now', 'old', 'see', 'him', 'two', 'how', 'its', 'who', 'oil', 'sit', 'set', 'run', 'eat', 'far', 'sea', 'eye', 'car', 'cut', 'dog', 'end', 'few', 'fox', 'got', 'hat', 'hot', 'job', 'let', 'lot', 'men', 'mix', 'put', 'red', 'say', 'sun', 'ten', 'top', 'try', 'war', 'way', 'win', 'yes']:
+                # Keep short uppercase words that are likely abbreviations
                 result.append(word)
             else:
-                # Default to lowercase for other words
-                result.append(word.lower())
+                # Check if this word is part of a multi-word proper noun (preserve its case)
+                is_part_of_multiword = False
+                for noun in self.proper_nouns:
+                    if (' ' in noun or '.' in noun) and word_clean in noun.split():
+                        # This word is part of a multi-word proper noun, check if case matches
+                        if word_clean in noun:
+                            is_part_of_multiword = True
+                            result.append(word)
+                            break
+                
+                if not is_part_of_multiword:
+                    # Default to lowercase
+                    result.append(word.lower())
         
         return ' '.join(result)
     
@@ -167,6 +214,45 @@ class MarkdownHeadingsConverter:
         converted_text = self.convert_to_sentence_case(heading_text)
         
         return f"{heading_level} {converted_text}"
+    
+    def process_toml_frontmatter(self, frontmatter_content: str) -> str:
+        """
+        Process TOML frontmatter and convert title fields to sentence case.
+        
+        Args:
+            frontmatter_content: The TOML frontmatter content (without +++ delimiters)
+            
+        Returns:
+            Processed frontmatter content with converted titles
+        """
+        def replace_title(match):
+            indent = match.group(1)
+            field_name = match.group(2)
+            equals_and_space = match.group(3)
+            title_text = match.group(4)
+            
+            # Convert to sentence case
+            converted_text = self.convert_to_sentence_case(title_text)
+            
+            return f'{indent}{field_name}{equals_and_space}"{converted_text}"'
+        
+        def replace_menu_title(match):
+            menu_section = match.group(1)
+            title_part = match.group(2)
+            title_text = match.group(3)
+            
+            # Convert to sentence case
+            converted_text = self.convert_to_sentence_case(title_text)
+            
+            return f'{menu_section}{title_part}"{converted_text}"'
+        
+        # Replace regular title fields first
+        result = self.toml_title_pattern.sub(replace_title, frontmatter_content)
+        
+        # Then replace nested menu title fields
+        result = self.toml_menu_title_pattern.sub(replace_menu_title, result)
+        
+        return result
     
     def process_markdown_file(self, filepath: Path) -> bool:
         """
@@ -207,6 +293,40 @@ class MarkdownHeadingsConverter:
         
         Args:
             content: Original markdown content
+            
+        Returns:
+            Modified content with converted headings
+        """
+        # First, check for and process TOML frontmatter
+        frontmatter_match = self.toml_frontmatter_pattern.match(content)
+        
+        if frontmatter_match:
+            # Extract frontmatter components
+            opening_delimiter = frontmatter_match.group(1)  # "+++\n"
+            frontmatter_content = frontmatter_match.group(2)  # The TOML content
+            closing_delimiter = frontmatter_match.group(3)  # "\n+++"
+            
+            # Process the frontmatter
+            processed_frontmatter = self.process_toml_frontmatter(frontmatter_content)
+            
+            # Get the rest of the content after frontmatter
+            content_after_frontmatter = content[frontmatter_match.end():]
+            
+            # Process the markdown content (headings) after frontmatter
+            processed_content = self._process_markdown_content(content_after_frontmatter)
+            
+            # Combine processed frontmatter with processed content
+            return opening_delimiter + processed_frontmatter + closing_delimiter + processed_content
+        else:
+            # No frontmatter, just process markdown content
+            return self._process_markdown_content(content)
+    
+    def _process_markdown_content(self, content: str) -> str:
+        """
+        Internal method to process markdown content for headings.
+        
+        Args:
+            content: Markdown content (without frontmatter)
             
         Returns:
             Modified content with converted headings

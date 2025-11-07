@@ -29,7 +29,9 @@ python extract_words.py docs/ --output technical_terms.txt
 ## Features
 
 - **Smart heading conversion**: Convert ALL CAPS and Title Case to sentence case
+- **TOML frontmatter processing**: Convert title fields in TOML frontmatter (including nested menu titles)
 - **Proper noun preservation**: Maintain correct capitalization for brand names and technical terms
+- **Code block protection**: Ignore comments and content within code blocks
 - **Word extraction**: Identify technical vocabulary not in standard dictionaries
 - **Recursive processing**: Handle entire documentation trees
 - **Dry-run support**: Preview changes before applying
@@ -41,10 +43,12 @@ python extract_words.py docs/ --output technical_terms.txt
 **Purpose**: Converts uppercase and titlecase headings to proper sentence case
 
 - Converts ALL CAPS and Title Case headings to sentence case
+- Processes TOML frontmatter title fields (including nested menu titles)
 - Preserves proper nouns using a custom list
 - Processes all markdown files recursively
 - Includes dry-run mode for safe testing
 - Handles multi-word proper nouns (e.g., "Node.js", "VS Code")
+- Ignores content within code blocks to preserve comments and code
 
 ### 2. `extract_words.py` - Word Extractor
 
@@ -160,6 +164,30 @@ Before: ## Building Modern Web Applications With React
 After:  ## Building modern web applications with React
 ```
 
+### TOML Frontmatter Conversion
+
+```toml
+Before:
++++
+title = "Chef Habitat And Containers"
+linkTitle = "Habitat And Containers Guide"
+
+[menu.containers]
+  title = "Chef Habitat And Containers"
+  weight = 10
++++
+
+After:
++++
+title = "Chef Habitat and containers"
+linkTitle = "Habitat and containers guide"
+
+[menu.containers]
+  title = "Chef Habitat and containers"
+  weight = 10
++++
+```
+
 ## 🧪 Testing
 
 Run the comprehensive test suite:
@@ -176,6 +204,8 @@ python tests/test_word_extractor.py
 The test suite includes:
 
 - **Titlecase to sentence case conversion** (15 test cases)
+- **TOML frontmatter processing** (5 test cases including nested menu titles)
+- **Code block protection** (ensuring content within code blocks is ignored)
 - **Edge case handling** (10 test cases)
 - **Word extraction accuracy** validation
 - **Proper noun preservation** verification
