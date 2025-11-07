@@ -60,9 +60,9 @@ class MarkdownHeadingsConverter:
                         self.proper_nouns.add(noun)
             print(f"Loaded {len(self.proper_nouns)} proper nouns from {filepath}")
         except FileNotFoundError:
-            print(f"Warning: Proper nouns file '{filepath}' not found. Proceeding without proper nouns.")
+            raise FileNotFoundError(f"Proper nouns file '{filepath}' not found.")
         except Exception as e:
-            print(f"Error loading proper nouns file: {e}")
+            raise Exception(f"Error loading proper nouns file: {e}")
     
     def remove_code_blocks(self, content: str) -> str:
         """

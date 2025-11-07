@@ -39,6 +39,7 @@ python md_headings_converter.py /path/to/markdown/directory --proper-nouns prope
 
 - `directory`: Path to the directory containing Markdown files (required)
 - `--proper-nouns`, `-p`: Path to text file containing proper nouns (optional)
+  - **Note**: If specified, the file must exist or the script will exit with an error
 - `--dry-run`, `-d`: Show what would be changed without modifying files (optional)
 
 ## Proper Nouns File Format
@@ -57,6 +58,20 @@ JSON
 - Lines starting with `#` are treated as comments and ignored
 - Empty lines are ignored
 - Each proper noun should be on its own line with the exact capitalization you want preserved
+
+## Error Handling
+
+The converter will exit with an error in the following cases:
+
+- **Missing proper nouns file**: If you specify a `--proper-nouns` file that doesn't exist
+- **Permission errors**: If the proper nouns file cannot be read due to permission issues
+
+**Example error output:**
+```
+Error: Proper nouns file 'missing_file.txt' not found.
+```
+
+If you don't need proper nouns preservation, simply omit the `--proper-nouns` option.
 
 ## Examples
 

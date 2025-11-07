@@ -206,6 +206,7 @@ The test suite includes:
 - **Titlecase to sentence case conversion** (15 test cases)
 - **TOML frontmatter processing** (5 test cases including nested menu titles)
 - **Code block protection** (ensuring content within code blocks is ignored)
+- **Error handling** (4 test cases for proper nouns file validation)
 - **Edge case handling** (10 test cases)
 - **Word extraction accuracy** validation
 - **Proper noun preservation** verification

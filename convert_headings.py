@@ -30,12 +30,22 @@ def main():
     
     args = parser.parse_args()
     
-    # Create converter instance
-    converter = MarkdownHeadingsConverter(args.proper_nouns)
+    try:
+        # Create converter instance
+        converter = MarkdownHeadingsConverter(args.proper_nouns)
+        
+        # Process directory
+        converter.process_directory(args.directory, args.dry_run)
+    except FileNotFoundError as e:
+        print(f"Error: {e}")
+        return 1
+    except Exception as e:
+        print(f"Unexpected error: {e}")
+        return 1
     
-    # Process directory
-    converter.process_directory(args.directory, args.dry_run)
+    return 0
 
 
 if __name__ == "__main__":
-    main()
+    exit_code = main()
+    exit(exit_code)
